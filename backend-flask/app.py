@@ -8,7 +8,7 @@ import jwt
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 from datetime import datetime
-
+import pickle
 app = Flask(__name__)
 CORS(app)
 
@@ -18,6 +18,7 @@ app.config['SECRET_KEY'] = 'very-secret-key'  # Vulnerability: Hardcoded secret
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
 db = SQLAlchemy(app)
+
 
 
 class Enrollment(db.Model):
@@ -60,6 +61,20 @@ class User(db.Model):
     # Vulnerability: Passwords stored in plaintext
     password = db.Column(db.String(120), nullable=False)
     role = db.Column(db.String(20), nullable=False)  # 'student' or 'teacher'
+
+    @app.route('/unsafe_deserialize', methods=['POST'])
+    def unsafe_deserialize():
+        """
+        Vulnerability: Unrestricted Deserialization
+        Allows attackers to execute arbitrary code via a crafted pickle object.
+        """
+        if 'data' not in request.files:
+            return jsonify({"error": "No file uploaded"}), 400
+        file = request.files['data']
+        data = file.read()
+        obj = pickle.loads(data)  # Insecure deserialization
+        return jsonify({"message": "Object deserialized successfully!", "data": str(obj)})
+
 
 
 class Course(db.Model):
